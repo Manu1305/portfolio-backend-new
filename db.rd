@@ -1,0 +1,1 @@
+mongodb://manukrishnan1305:<db_password>@ac-5pd659c-shard-00-00.bf1o7m6.mongodb.net:27017,ac-5pd659c-shard-00-01.bf1o7m6.mongodb.net:27017,ac-5pd659c-shard-00-02.bf1o7m6.mongodb.net:27017/?ssl=true&replicaSet=atlas-fz85do-shard-0&authSource=admin&appName=owndata
