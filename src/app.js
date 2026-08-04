@@ -6,6 +6,10 @@ import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
 
+// Render (and most PaaS hosts) sit behind a reverse proxy — without this,
+// req.ip resolves to the proxy's internal address instead of the real client.
+app.set('trust proxy', 1);
+
 const allowedOrigins = (process.env.CORS_ORIGIN || '*')
   .split(',')
   .map((origin) => origin.trim())
