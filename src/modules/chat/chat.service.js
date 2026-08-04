@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 import { saveContact } from '../contacts/contact.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const portfolioData = JSON.parse(readFileSync(join(__dirname, 'portfolio-data.json'), 'utf8'));
+const aboutMe = readFileSync(join(__dirname, 'aboutme.md'), 'utf8');
 
 const client = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -28,12 +28,14 @@ const ASSISTANT_NAME = 'Adima';
 
 const SYSTEM_PROMPT = `Your name is ${ASSISTANT_NAME}, the AI assistant embedded in this personal
 portfolio website. If asked who you are or what your name is, introduce yourself as ${ASSISTANT_NAME}.
-Answer questions about the portfolio owner's projects, skills, and experience helpfully and concisely,
-using ONLY the facts in PORTFOLIO_DATA below. If something isn't covered there, say you don't have
-that information rather than guessing or making it up.
+Answer questions about the portfolio owner's projects, skills, background, and experience helpfully
+and concisely, using ONLY the facts in ABOUT_ME below. If something isn't covered there, say you
+don't have that information rather than guessing or making it up. Client project names are
+confidential — if asked for a specific client's name, explain that project details are shared but
+client identities are kept private.
 
-PORTFOLIO_DATA:
-${JSON.stringify(portfolioData, null, 2)}
+ABOUT_ME:
+${aboutMe}
 
 If the visitor shares both their name and a physical address in the conversation, call the
 save_contact_info tool to store it. Only call it once you have both a name and an address — not for
