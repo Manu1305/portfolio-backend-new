@@ -1,24 +1,12 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import OpenAI from 'openai';
+import { openrouter as client, OPENROUTER_MODEL as MODEL } from '../../config/openrouter.js';
 import { saveContact } from '../contacts/contact.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const aboutMe = readFileSync(join(__dirname, 'aboutme.md'), 'utf8');
 
-const client = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  // fall back to a placeholder so a missing key fails per-request (a clean
-  // 401 from OpenRouter) instead of crashing the whole app at import time
-  apiKey: process.env.OPENROUTER_API_KEY || 'missing-openrouter-api-key',
-  defaultHeaders: {
-    'HTTP-Referer': process.env.SITE_URL || 'http://localhost:5173',
-    'X-Title': process.env.SITE_NAME || 'Portfolio',
-  },
-});
-
-const MODEL = process.env.OPENROUTER_MODEL || 'openrouter/free';
 const MAX_TOKENS = 1024;
 const MAX_MESSAGES = 40;
 const MAX_MESSAGE_LENGTH = 4000;

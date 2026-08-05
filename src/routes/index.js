@@ -7,6 +7,8 @@ import profileRoutes from '../modules/profile/profile.routes.js';
 import peopleRoutes from '../modules/people/people.routes.js';
 import youtubeRoutes from '../modules/youtube/youtube.routes.js';
 import memberRoutes from '../modules/members/member.routes.js';
+import horoscopeRoutes from '../modules/horoscope/horoscope.routes.js';
+import visitorRoutes from '../modules/visitors/visitor.routes.js';
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use('/profile', profileRoutes);
 router.use('/people', peopleRoutes);
 router.use('/youtube', youtubeRoutes);
 router.use('/members', memberRoutes);
+router.use('/horoscope', horoscopeRoutes);
+router.use('/visitors', visitorRoutes);
 
 export default router;

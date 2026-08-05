@@ -56,11 +56,22 @@ src/
       member.controller.js
       member.service.js
       member.model.js            # mongoose schema
+    horoscope/
+      horoscope.routes.js
+      horoscope.controller.js
+      horoscope.service.js
+      reading.model.js            # mongoose schema, unique (userKey, date) index
+    visitors/
+      visitor.routes.js
+      visitor.controller.js
+      visitor.service.js
+      visitor.model.js            # mongoose schema
   config/
     db.js                    # mongoose connection
     imagekit.js               # ImageKit SDK client
     ytdlp.js                  # resolves the path to the downloaded yt-dlp binary
     googleAuth.js              # verifies Google ID tokens for member sign-in
+    openrouter.js               # shared OpenRouter client + model — used by chat AND horoscope
 scripts/
   setup-ytdlp.mjs            # downloads yt-dlp's standalone binary into bin/ (runs via postinstall)
 bin/                          # yt-dlp binary lands here — gitignored, not committed
@@ -83,7 +94,7 @@ bin/                          # yt-dlp binary lands here — gitignored, not com
 
 ## Chat API
 
-Routed through [OpenRouter](https://openrouter.ai) (OpenAI-compatible API — set `OPENROUTER_MODEL` to any model ID from openrouter.ai/models, defaults to `openrouter/free`). Conversation history itself is **not** persisted — the frontend keeps it in memory/localStorage and resends the full message list each turn. The one thing that *is* saved to MongoDB: if the visitor shares both their **name and address** during the chat, the model calls a `save_contact_info` tool and the backend writes it to the `contacts` collection.
+Routed through [OpenRouter](https://openrouter.ai) (OpenAI-compatible API — set `OPENROUTER_MODEL` to any model ID from openrouter.ai/models; defaults to `nvidia/nemotron-nano-9b-v2:free`. **Do not** set this to the `openrouter/free` alias — it randomly load-balances across every free model on OpenRouter, including reasoning models that silently burn their whole token budget on hidden "thinking" tokens before ever writing a real reply, coding-agent models, and even a content-moderation classifier. All of those produced garbage or empty replies when this was actually tested — pin to one real instruct model instead. The shared client lives in `src/config/openrouter.js`, used by both this module and the Horoscope one below.). Conversation history itself is **not** persisted — the frontend keeps it in memory/localStorage and resends the full message list each turn. The one thing that *is* saved to MongoDB: if the visitor shares both their **name and address** during the chat, the model calls a `save_contact_info` tool and the backend writes it to the `contacts` collection.
 
 - `POST /api/chat` — body `{ messages: [{ role: "user"|"assistant", content: string }, ...] }` (first message must be `role: "user"`, max 40 messages, 4000 chars each)
   → Server-Sent Events stream:
@@ -162,6 +173,28 @@ A member's own `name`, `email`, and `avatarUrl` are populated automatically from
 1. Go to [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials), create an **OAuth 2.0 Client ID** of type **Web application**.
 2. Add your frontend's origins under **Authorized JavaScript origins** — `http://localhost:5173` for local dev, plus your deployed frontend URL.
 3. Copy the **Client ID** (not the secret — this flow doesn't need one) into `GOOGLE_CLIENT_ID` in `.env`, and the same value into Render's environment variables for production. The frontend needs this exact same Client ID to initialize its "Sign in with Google" button.
+
+## Horoscope API
+
+A fun, entertainment-only feature — every response includes a `disclaimer` field the frontend should always display; this is AI-generated flavor text, not a genuine prediction. Requires being signed in (admin or member — same access model as the YouTube API above, not open to anonymous visitors). Limited to **one reading per user per day**: submit birth details once, get a "this year" and a "today" reading back; submitting again the same day (even with different birth details) just returns the same reading already generated — it does not regenerate. This is enforced with a unique `(userKey, date)` index at the database level, not just app logic, so it holds even under concurrent requests.
+
+- `POST /api/horoscope` — requires header `Authorization: Bearer <token>` (admin OR member); body `{ dob, birthTime?, birthPlace? }` (`dob` required, any parseable date string) → `{ reading, cached, disclaimer }`. `cached: false` + `201` the first time today; `cached: true` + `200` on every subsequent call today.
+- `GET /api/horoscope/today` — requires the same header → `{ reading, disclaimer }` (`reading` is `null` if nothing generated yet today) — a way to check without resubmitting birth details.
+
+`reading` shape: `{ dob, birthTime?, birthPlace?, yearReading, dayReading, date, createdAt }`.
+
+Uses the shared OpenRouter client (`src/config/openrouter.js`, same `OPENROUTER_API_KEY`/`OPENROUTER_MODEL` as the Chat API — no separate env vars needed). `max_tokens` is set generously (1200) specifically because the default model does hidden reasoning before the real answer; a tighter budget was tested and reliably truncated before any real content came out.
+
+## Visitors API
+
+Tracks anonymous browsing on the **public** portfolio site — not the admin area, not signed-up members. Every page load calls the public track endpoint; only you can read the collected data back.
+
+- `POST /api/visitors/track` — public, no auth. Body from the frontend: `{ path, referrer?, language?, timezone?, screenWidth?, screenHeight?, preciseLocation?: { latitude, longitude, accuracy }, locationPermission?: "granted"|"denied"|"unavailable"|"not_requested" }` → `201 { success: true }`. `ip` and `userAgent` are always captured server-side from the request itself, never trusted from the body. This endpoint is deliberately built to **never hard-fail a real visitor's page load** — a missing/malformed field (wrong type, oversized string, garbage `preciseLocation`, an invalid `locationPermission` value) gets coerced, truncated (500 chars), or silently dropped rather than rejected; the only 400 is a genuinely missing `path`.
+- `GET /api/visitors` — admin-only (`Authorization: Bearer <admin token>`); query params `page` (default 1) and `limit` (default 50, capped at 200) → `{ visitors: [...], total }`, newest first. Paginated from the start since this collection grows on every page view, unlike the other list endpoints in this API.
+
+`ipLocation` (city/region/country/lat/lon) is resolved server-side from the captured IP via [ip-api.com](https://ip-api.com)'s free endpoint — no API key needed, but it's called over plain HTTP (the free tier doesn't offer HTTPS) and is skipped entirely for localhost/private-range IPs (127.x, 10.x, 172.16–31.x, 192.168.x), since those always fail external lookup anyway. A failed or rate-limited lookup just leaves `ipLocation` unset — it never blocks saving the rest of the visit. This is separate from `preciseLocation`, which only gets populated if the frontend explicitly requests and receives browser Geolocation API permission (`locationPermission: "granted"`).
+
+Worth knowing: collecting IP + resolved location + (optionally) precise GPS from every visitor, stored indefinitely and admin-readable, is the kind of data collection that typically warrants a privacy policy disclosure — and in the EU, likely consent for anything beyond bare IP-based analytics. Nothing here builds a consent banner or policy page; that's a product decision for you to make, not something implemented as part of this API.
 
 ## Database
 
