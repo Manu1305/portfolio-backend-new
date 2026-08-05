@@ -6,12 +6,13 @@ import {
   listDevicesHandler,
 } from './auth.controller.js';
 import authenticate from '../../middleware/authenticate.js';
+import requireRole from '../../middleware/requireRole.js';
 
 const router = Router();
 
 router.post('/login', loginHandler);
 router.patch('/password', authenticate, changePasswordHandler);
 router.post('/device', authenticate, saveDeviceHandler);
-router.get('/devices', authenticate, listDevicesHandler);
+router.get('/devices', authenticate, requireRole('admin'), listDevicesHandler);
 
 export default router;

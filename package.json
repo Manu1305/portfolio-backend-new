@@ -10,17 +10,25 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "nodemon src/server.js",
+    "setup:ytdlp": "node scripts/setup-ytdlp.mjs",
+    "postinstall": "node scripts/setup-ytdlp.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "google-auth-library": "^11.0.0",
+    "imagekit": "^6.0.0",
     "jimp": "^1.6.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.1",
+    "multer": "^2.2.0",
     "openai": "^6.49.0",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }
