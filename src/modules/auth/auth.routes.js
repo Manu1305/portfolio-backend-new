@@ -11,8 +11,8 @@ import requireRole from '../../middleware/requireRole.js';
 const router = Router();
 
 router.post('/login', loginHandler);
-router.patch('/password', authenticate, changePasswordHandler);
-router.post('/device', authenticate, saveDeviceHandler);
+router.patch('/password', authenticate, requireRole('admin'), changePasswordHandler);
+router.post('/device', authenticate, requireRole('admin'), saveDeviceHandler);
 router.get('/devices', authenticate, requireRole('admin'), listDevicesHandler);
 
 export default router;

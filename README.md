@@ -138,14 +138,12 @@ Only `name` is required. `relation` is a free-text label (e.g. "friend", "family
 
 ## YouTube Download API
 
-Private, admin-only — not exposed to public visitors. Paste a YouTube URL, get its available formats, then download one. Uses [yt-dlp](https://github.com/yt-dlp/yt-dlp)'s official standalone binary (downloaded automatically by `npm install` via `scripts/setup-ytdlp.mjs`, no system Python required) driven directly through `child_process`, piping the video straight from yt-dlp's stdout into the HTTP response — nothing is ever written to disk on the server.
+Requires being signed in — either as admin or as a member — but is deliberately **not** open to unauthenticated visitors (a public, unauthenticated version of this was considered and specifically rejected: anonymous mass access to a YouTube-downloading service is a real ToS/copyright exposure risk for whoever operates it; requiring a real signed-in account, even a self-service one, keeps every use tied to an identifiable person). Paste a YouTube URL, get its available formats, then download one. Uses [yt-dlp](https://github.com/yt-dlp/yt-dlp)'s official standalone binary (downloaded automatically by `npm install` via `scripts/setup-ytdlp.mjs`, no system Python required) driven directly through `child_process`, piping the video straight from yt-dlp's stdout into the HTTP response — nothing is ever written to disk on the server.
 
-- `POST /api/youtube/info` — requires header `Authorization: Bearer <token>`; body `{ url }` (must be a youtube.com/youtu.be URL) → `{ title, thumbnail, duration, uploader, videoFormats: [{ formatId, ext, resolution, filesizeApprox, note }], audioFormats: [...] }`. Only progressive formats (video+audio already combined) and audio-only formats are listed — no `ffmpeg`-merge step is set up, so the highest resolutions that require merging separate video/audio tracks won't appear.
-- `GET /api/youtube/download?url=...&formatId=...&title=...&ext=...` — requires the same header; streams the file back with `Content-Disposition: attachment`. `title`/`ext` are optional, only used to name the downloaded file (pass the values from the `/info` response).
+- `POST /api/youtube/info` — requires header `Authorization: Bearer <token>` (admin OR member token); body `{ url }` (must be a youtube.com/youtu.be URL) → `{ title, thumbnail, duration, uploader, videoFormats: [{ formatId, ext, resolution, filesizeApprox, note }], audioFormats: [...] }`. Only progressive formats (video+audio already combined) and audio-only formats are listed — no `ffmpeg`-merge step is set up, so the highest resolutions that require merging separate video/audio tracks won't appear.
+- `GET /api/youtube/download?url=...&formatId=...&title=...&ext=...` — requires the same header (admin OR member token); streams the file back with `Content-Disposition: attachment`. `title`/`ext` are optional, only used to name the downloaded file (pass the values from the `/info` response).
 
 Only `formatId`s exactly matching `^[a-zA-Z0-9_.+-]+$` are accepted (defense in depth — args are passed to `child_process.spawn` as an array, never through a shell, so there's no injection path regardless, but a real yt-dlp format ID never contains anything else anyway).
-
-This is a personal-use tool, deliberately not public — see the conversation history for why a public, unauthenticated version of this specific feature was intentionally not built (ToS/copyright exposure for a public downloader service).
 
 ## Members API
 
