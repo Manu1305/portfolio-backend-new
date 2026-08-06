@@ -66,6 +66,15 @@ src/
       visitor.controller.js
       visitor.service.js
       visitor.model.js            # mongoose schema
+    gita/
+      gita.routes.js
+      gita.controller.js
+      gita.service.js              # no model — fully stateless, in-memory cache only
+    finance/
+      transaction.routes.js
+      transaction.controller.js
+      transaction.service.js
+      transaction.model.js          # mongoose schema
   config/
     db.js                    # mongoose connection
     imagekit.js               # ImageKit SDK client
@@ -195,6 +204,27 @@ Tracks anonymous browsing on the **public** portfolio site — not the admin are
 `ipLocation` (city/region/country/lat/lon) is resolved server-side from the captured IP via [ip-api.com](https://ip-api.com)'s free endpoint — no API key needed, but it's called over plain HTTP (the free tier doesn't offer HTTPS) and is skipped entirely for localhost/private-range IPs (127.x, 10.x, 172.16–31.x, 192.168.x), since those always fail external lookup anyway. A failed or rate-limited lookup just leaves `ipLocation` unset — it never blocks saving the rest of the visit. This is separate from `preciseLocation`, which only gets populated if the frontend explicitly requests and receives browser Geolocation API permission (`locationPermission: "granted"`).
 
 Worth knowing: collecting IP + resolved location + (optionally) precise GPS from every visitor, stored indefinitely and admin-readable, is the kind of data collection that typically warrants a privacy policy disclosure — and in the EU, likely consent for anything beyond bare IP-based analytics. Nothing here builds a consent banner or policy page; that's a product decision for you to make, not something implemented as part of this API.
+
+## Bhagavad Gita API
+
+A separate feature from Horoscope, not a replacement — different shape on purpose. Horoscope is personalized (needs birth data) and AI-generated (so it's gated behind login and cached per-user). This one isn't personalized — same verse for every logged-in user on a given day, sourced from a real verse database rather than AI-generated (fabricating "scripture" text would be a genuine accuracy problem, not just harmless fluff the way a fun horoscope is). No database of our own (no model, no persistence for the verse itself) — everything is either fetched live or held in an in-memory cache. Access-gated the same way as Horoscope/YouTube (any logged-in user, admin or member) rather than fully public, by request — nothing about the content itself required that, it's purely an access-control choice.
+
+- `GET /api/gita/today` — requires header `Authorization: Bearer <token>` (admin OR member) → `{ verse: { chapter, verse, sanskrit, transliteration, translations: [{ author, text }, ...] } }`
+
+Verse selection is deterministic: `day-of-year % 701` (the Gita's total verse count, fetched once from the source and cached for the life of the process) picks the same chapter/verse for everyone on a given UTC calendar date — no coin-flip randomness, no state to persist, and it naturally cycles through the whole text roughly twice a year. The resolved verse is then cached in memory per day, so the free external API ([vedicscriptures.github.io](https://vedicscriptures.github.io)) only gets hit once daily regardless of visitor traffic, not once per page load.
+
+Free, no API key. Translations come from named traditional scholars (Swami Sivananda, Shri Purohit Swami) as provided by the source — attribution is kept intentionally rather than stripped.
+
+## Finance API
+
+Admin-only expense/income tracker — same auth as Profile/People (`Authorization: Bearer <admin token>`, `401` without it, `403` with a member token).
+
+- `GET /api/finance/transactions?month=YYYY-MM` — `month` is optional; when given, filters to that calendar month → `{ transactions: [...] }`, newest `date` first (ties broken by `createdAt` descending).
+- `POST /api/finance/transactions` — body `{ type: "income"|"expense", amount: number > 0, date: "YYYY-MM-DD", category?, note? }` → `{ transaction }` (201)
+- `PUT /api/finance/transactions/:id` — body is the same required shape as POST (`type`/`amount`/`date` all required — a full replace, not a partial patch) → `{ transaction }`, or `404` if the ID doesn't exist
+- `DELETE /api/finance/transactions/:id` → `{ success: true }`, or `404` if already deleted/never existed
+
+`date` is stored as a plain `"YYYY-MM-DD"` string rather than a `Date` — the month filter matches against it with a string prefix (`^YYYY-MM`), which is simpler and avoids timezone-boundary bugs that a real `Date` field would introduce for "which month does this fall in" queries.
 
 ## Database
 
