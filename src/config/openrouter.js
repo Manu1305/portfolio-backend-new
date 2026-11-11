@@ -16,3 +16,15 @@ export const openrouter = new OpenAI({
 // before ever writing a real answer), coding-agent models, and even a content-
 // moderation classifier. Pin to one actual general-purpose instruct model.
 export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-nano-9b-v2:free';
+
+// Used by the AI Image Studio — every entry must accept image input. Same rule
+// as above: pinned instruct models, not reasoning models and not the free alias.
+// Comma-separated: the first is primary, the rest are OpenRouter fallbacks
+// (free vision pools get rate-limited upstream often, so one model isn't enough).
+export const OPENROUTER_VISION_MODELS = (
+  process.env.OPENROUTER_VISION_MODEL ||
+  'google/gemma-4-31b-it:free,nvidia/nemotron-3.5-super-vl:free,google/gemma-4-26b-a4b-it:free'
+)
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);

@@ -165,6 +165,16 @@ Requires being signed in — either as admin or as a member — but is deliberat
 
 Only `formatId`s exactly matching `^[a-zA-Z0-9_.+-]+$` are accepted (defense in depth — args are passed to `child_process.spawn` as an array, never through a shell, so there's no injection path regardless, but a real yt-dlp format ID never contains anything else anyway).
 
+- `GET /api/youtube/health` — admin-only → `{ binaryPresent, version, error, jsRuntime, nodeVersion, cookiesConfigured, platform, binaryPath }`. Use this first when downloads fail on the deployed server.
+
+Download errors: nothing (status, `Content-Disposition`) is sent until yt-dlp emits its first byte, so a failure before that is a normal JSON error (`502` with a readable message, e.g. a bot-check or unavailable-format error). A failure mid-stream drops the connection rather than ending it cleanly, so the client sees a failed download instead of a truncated file. Full yt-dlp stderr is always logged server-side.
+
+### Running on a server (Render)
+
+- **Binary:** `scripts/setup-ytdlp.mjs` downloads the self-contained per-platform build (`yt-dlp_linux` / `yt-dlp_macos` / `yt-dlp.exe`), not the plain `yt-dlp` Python zipapp, so no system Python is needed. Every deploy gets the latest release (`bin/` isn't committed); locally, refresh with `npm run setup:ytdlp -- --force`.
+- **JS runtime:** yt-dlp needs a JavaScript runtime for YouTube extraction. Every call passes `--js-runtimes node:<path of the running node binary>`, so nothing extra has to be installed.
+- **Bot check / cookies:** YouTube blocks most datacenter IPs with "Sign in to confirm you're not a bot". Fix: export `cookies.txt` (Netscape format, e.g. with a "Get cookies.txt" browser extension) from a browser logged into a **throwaway** Google account (YouTube may flag accounts used this way), then either paste its contents into `YTDLP_COOKIES` (literal `\n` is accepted for newlines) or upload it as a Render Secret File and set `YTDLP_COOKIES_FILE=/etc/secrets/<name>`. Either way it's copied to a writable temp file at startup, since yt-dlp writes refreshed cookies back. Cookies expire; re-export when the bot-check error comes back.
+
 ## Members API
 
 Self-service accounts for site visitors — a completely separate role from the admin, can only ever read/write their own record (see **Roles** above). Sign-in is **Google-only, no passwords** — decided over password or password+Google specifically to avoid the extra setup burden of a hybrid flow while it wasn't needed yet.
@@ -225,6 +235,15 @@ Admin-only expense/income tracker — same auth as Profile/People (`Authorizatio
 - `DELETE /api/finance/transactions/:id` → `{ success: true }`, or `404` if already deleted/never existed
 
 `date` is stored as a plain `"YYYY-MM-DD"` string rather than a `Date` — the month filter matches against it with a string prefix (`^YYYY-MM`), which is simpler and avoids timezone-boundary bugs that a real `Date` field would introduce for "which month does this fall in" queries.
+
+## Vision API (AI Image Studio)
+
+Public, no auth — protected by a per-IP rate limit instead (10 requests / 15 minutes, `src/middleware/rateLimit.js`). Uses the shared OpenRouter client with `OPENROUTER_VISION_MODEL` — a comma-separated list of models that accept image input; the first is primary and the rest are passed as OpenRouter `models` fallbacks, since free vision pools are frequently rate-limited upstream (defaults to `google/gemma-4-31b-it:free,nvidia/nemotron-3.5-super-vl:free,google/gemma-4-26b-a4b-it:free`). Images are processed in memory only — never written to disk, ImageKit, or MongoDB. PNG/JPEG/GIF are downscaled to max 1024px and re-encoded as JPEG (transparency flattened onto white, GIF → first frame) before being sent to the model; WebP is passed through as-is because Jimp can't decode it.
+
+- `POST /api/vision/stream` — `multipart/form-data` with fields `image` (png/jpeg/webp/gif, max 5MB) and `mode` (`describe` | `alttext` | `roast` | `story` | `poem` | `ocr`)
+  → Server-Sent Events stream, same format as Chat: `data: {"text": "..."}` chunks, then `event: done` or `event: error` (its `error` is `"busy"` when every model is rate-limited upstream — temporary, retry later — otherwise `"stream failed"`)
+  - `400` `{ error }` — missing image, bad file type/size, unreadable image, or invalid `mode`
+  - `429` `{ error }` — rate limit hit (`RateLimit` / `RateLimit-Policy` headers say when it resets)
 
 ## Database
 

@@ -1,4 +1,4 @@
-import { isYoutubeUrl, isValidFormatId, getVideoInfo, streamDownload } from './youtube.service.js';
+import { isYoutubeUrl, isValidFormatId, getVideoInfo, streamDownload, getHealth } from './youtube.service.js';
 
 function sanitizeFilename(name) {
   // strip filesystem-illegal chars and control chars (incl. newlines, which
@@ -39,13 +39,20 @@ export function downloadHandler(req, res, next) {
     const ext = sanitizeFilename(String(req.query.ext || 'mp4'));
     const filename = `${sanitizeFilename(String(req.query.title || 'video'))}.${ext}`;
 
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${asciiOnly(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`
-    );
+    // only applied once yt-dlp actually starts producing data, so an early
+    // failure can still come back as a JSON error
+    streamDownload(url, formatId, res, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${asciiOnly(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
-    streamDownload(url, formatId, res);
+export async function healthHandler(req, res, next) {
+  try {
+    res.json(await getHealth());
   } catch (err) {
     next(err);
   }

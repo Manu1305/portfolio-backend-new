@@ -11,6 +11,7 @@ import horoscopeRoutes from '../modules/horoscope/horoscope.routes.js';
 import visitorRoutes from '../modules/visitors/visitor.routes.js';
 import gitaRoutes from '../modules/gita/gita.routes.js';
 import financeRoutes from '../modules/finance/transaction.routes.js';
+import visionRoutes from '../modules/vision/vision.routes.js';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/horoscope', horoscopeRoutes);
 router.use('/visitors', visitorRoutes);
 router.use('/gita', gitaRoutes);
 router.use('/finance', financeRoutes);
+router.use('/vision', visionRoutes);
 
 export default router;
