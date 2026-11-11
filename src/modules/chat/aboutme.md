@@ -60,10 +60,11 @@ A complete reference of everything the portfolio site currently says about Manu 
 7. **First Win — First Job at a Reputed IT Company** 🚀 *(Win)*
    Landed my first role at a well-known IT company on my own merit. The first day I shipped something to production I knew — this is it. This is where I belong.
 
-8. **Today — US-Based Company · Bangalore** 🏆 *(Win)*
-   Now working at a reputed US-based company in Bangalore. Still the same guy from Kerala who had nothing but YouTube and WiFi — just a lot more commits.
+8. **Making It Official — Online BCA, Earned While Working** 🎓 *(Win)*
+   Enrolled in an online BCA degree while working full-time — shipping code by day, studying by night. The skills were real — the paper was just catching up.
 
-   > Note: a milestone titled "BCA + Company Switch" (pursuing a BCA degree, switching to a better company) currently sits commented out between steps 7 and 8 in `Journey.jsx` — excluded here since you deliberately disabled it, but flagging in case it was accidental.
+9. **Today — US-Based Company · Bangalore** 🏆 *(Win)*
+   Now working at a reputed US-based company in Bangalore. Still the same guy from Kerala who had nothing but YouTube and WiFi — just a lot more commits.
 
 ## Projects (12 shown on the site — all client names are confidential by design)
 
